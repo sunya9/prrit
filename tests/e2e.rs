@@ -38,7 +38,9 @@ impl Sandbox {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("prrit-e2e-{}-{nanos}", std::process::id()));
+        let seq = SANDBOX_SEQ.fetch_add(1, Ordering::Relaxed);
+        let root =
+            std::env::temp_dir().join(format!("prrit-e2e-{}-{nanos}-{seq}", std::process::id()));
         let bin = root.join("bin");
         fs::create_dir_all(&bin).unwrap();
 

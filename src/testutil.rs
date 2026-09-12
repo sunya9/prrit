@@ -95,7 +95,8 @@ fn fresh_dir() -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("prrit-test-{}-{nanos}", std::process::id()));
+    let seq = DIR_SEQ.fetch_add(1, Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("prrit-test-{}-{nanos}-{seq}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
