@@ -5,6 +5,10 @@ edition = "2021"
 description = "Gerrit-style one-commit-per-PR stacked PRs for GitHub, built on gh stack link"
 license = "MIT"
 repository = "https://github.com/sunya9/prrit"
+readme = "README.md"
+keywords = ["git", "github", "stacked-prs", "gerrit", "pull-request"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = [".github/", "scripts/"]
 
 # cargo-binstall picks the archives the release workflow uploads.
 [package.metadata.binstall]

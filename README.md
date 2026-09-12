@@ -10,8 +10,8 @@ Every channel installs both `prrit` and `git-remote-prrit` (the name git looks f
 ```sh
 brew install sunya9/tap/prrit                                                      # Homebrew (macOS / Linux)
 curl -fsSL https://github.com/sunya9/prrit/releases/latest/download/install.sh | sh  # ~/.local/bin
-cargo binstall prrit --git https://github.com/sunya9/prrit                           # prebuilt via cargo-binstall
-cargo install --git https://github.com/sunya9/prrit                                  # build from source
+cargo binstall prrit                                                                 # prebuilt binaries via cargo-binstall
+cargo install prrit                                                                  # build from crates.io
 ```
 
 Prebuilt binaries cover macOS (arm64, x86_64) and Linux (x86_64, aarch64, static musl).
@@ -88,8 +88,9 @@ Runtime dependencies are `serde` and `serde_json` only; everything else is std p
 
 ### Releasing
 
-Commits follow Conventional Commits. On every push to `main`, [release-plz](https://release-plz.dev) keeps a release PR open with the version bump and CHANGELOG; merging it tags `vX.Y.Z`, creates the GitHub release, and the same workflow builds the binaries, uploads archives plus `SHA256SUMS` and `install.sh`, and pushes the formula to the Homebrew tap. Repository settings involved:
+Commits follow Conventional Commits. On every push to `main`, [release-plz](https://release-plz.dev) keeps a release PR open with the version bump and CHANGELOG; merging it publishes the crate to crates.io, tags `vX.Y.Z`, creates the GitHub release, and the same workflow builds the binaries, uploads archives plus `SHA256SUMS` and `install.sh`, and pushes the formula to the Homebrew tap. Repository settings involved:
 
+- crates.io Trusted Publishing: on the crate's settings page add a GitHub publisher for `sunya9/prrit` with workflow `release-plz.yml`; no `CARGO_REGISTRY_TOKEN` is needed (a brand-new crate has to be published by hand once before this works)
 - secret `RELEASE_PLZ_TOKEN` (optional PAT): lets CI run on the release PR
 - variable `HOMEBREW_TAP_REPO` (e.g. `sunya9/homebrew-tap`) and secret `HOMEBREW_TAP_TOKEN` (PAT with contents write on that repo): enable the tap update; without them that job is skipped
 

@@ -2,9 +2,10 @@ name: Release-plz
 
 # On every push to main, release-plz keeps a "release PR" up to date
 # (version bump + CHANGELOG from conventional commits). Merging that PR
-# creates the git tag and GitHub release, and this same run then builds and
-# uploads the binaries (a release created with GITHUB_TOKEN cannot trigger a
-# separate workflow, so the build is chained here).
+# publishes to crates.io via Trusted Publishing, creates the git tag and
+# GitHub release, and this same run then builds and uploads the binaries (a
+# release created with GITHUB_TOKEN cannot trigger a separate workflow, so
+# the build is chained here).
 
 on:
   push:
@@ -13,6 +14,8 @@ on:
 permissions:
   pull-requests: write
   contents: write
+  # crates.io Trusted Publishing: release-plz exchanges the OIDC token itself.
+  id-token: write
 
 concurrency:
   group: release-plz-${{ github.ref }}

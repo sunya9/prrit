@@ -1,6 +1,6 @@
 [workspace]
-# Distributed as binaries from GitHub Releases, not on crates.io.
-publish = false
+# Default flow: publish to crates.io (Trusted Publishing, no token), then tag
+# and create the GitHub release that carries the prebuilt binaries.
 git_release_enable = true
 git_tag_enable = true
 changelog_update = true
