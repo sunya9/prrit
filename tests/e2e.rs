@@ -319,6 +319,10 @@ fn status_and_help_run_from_the_binary() {
     let out = sb.cmd("prrit", &["bogus"], &sb.work);
     assert_eq!(out.status.code(), Some(1));
 
+    let out = sb.cmd("prrit", &["skill"], &sb.work);
+    assert!(out.status.success());
+    assert!(String::from_utf8_lossy(&out.stdout).starts_with("---\nname: prrit"));
+
     let out = sb.cmd("prrit", &["status"], &sb.work);
     assert!(
         out.status.success(),

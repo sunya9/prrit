@@ -4,6 +4,7 @@ version = "0.1.1"
 edition = "2021"
 description = "Gerrit-style one-commit-per-PR stacked PRs for GitHub, built on gh stack link"
 license = "MIT"
+default-run = "prrit"
 repository = "https://github.com/sunya9/prrit"
 readme = "README.md"
 keywords = ["git", "github", "stacked-prs", "gerrit", "pull-request"]

@@ -71,6 +71,10 @@ The push still goes through; the previous tip's sha is in the message and stays 
 
 The `Change-Id` trailer is the identity of a commit. `git commit --amend -m "..."` replaces the whole message and drops it, so the commit becomes a new PR and the old one is detached from the stack on the next push (it stays open; close it by hand if it is not wanted). Amend with the editor (`git commit --amend`) or `--no-edit`, or use `git rebase -i` with `reword`, and the trailer is kept.
 
+### Teaching an AI assistant
+
+[`skills/prrit/SKILL.md`](skills/prrit/SKILL.md) is an [Agent Skill](https://agentskills.io) that explains the workflow and its pitfalls to coding agents (Claude Code, Codex, Cursor, ...). Install it with your agent's skill tooling, e.g. `npx skills add sunya9/prrit`, or copy it into the agent's skills directory; `prrit skill` prints the same file from any installed prrit.
+
 ### `prrit status [remote] [base]`
 
 Read-only. Lists each commit on top of `<remote>/<base>` with its PR number and state, marks commits whose branch is not pushed yet, warns about commits whose PR is already merged, shows PRs the next push will detach from the stack, and lists open PRs of yours under `prrit/<login>/` that belong to no stack of this series (candidates to close).

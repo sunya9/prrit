@@ -21,11 +21,16 @@ use commands::status::{status, StatusOptions};
 use context::{Context, StdSink};
 use runner::{ExecRunner, InheritTarget};
 
+/// Agent skill describing how to use prrit; shipped in the crate so any
+/// installed copy can print it (`prrit skill`).
+pub const SKILL: &str = include_str!("../skills/prrit/SKILL.md");
+
 const USAGE: &str = "prrit — one commit, one PR, stacked on GitHub
 
 Usage:
   prrit init [remote] [base]      Install the Change-Id hook and the \"review\" remote (default: origin <default branch>)
   prrit status [remote] [base]    Show the PR for each commit on top of <remote>/<base>
+  prrit skill                     Print the agent skill (SKILL.md) that teaches an AI assistant this workflow
 
 Then push like Gerrit:
   git push review                       upload HEAD to refs/for/<base>
@@ -116,6 +121,10 @@ fn run(args: &[String], ctx: &Context<'_>) -> i32 {
             },
         )
         .map(|_| true),
+        "skill" => {
+            ctx.out(SKILL.trim_end());
+            Ok(true)
+        }
         other => {
             ctx.err(format!("unknown command: {other}\n"));
             ctx.out(USAGE);
@@ -214,6 +223,13 @@ mod tests {
         assert_eq!(cli.remote, "origin");
         assert_eq!(cli.base, None);
         assert!(parse_cli(&strs(&["--bogus"])).is_err());
+    }
+
+    #[test]
+    fn skill_is_a_valid_skill_file() {
+        assert!(SKILL.starts_with("---\nname: prrit\ndescription: "));
+        assert!(SKILL.contains("git push review"));
+        assert!(SKILL.contains("Change-Id"));
     }
 
     #[test]
