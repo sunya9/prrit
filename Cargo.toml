@@ -1,0 +1,19 @@
+[package]
+name = "prrit"
+version = "0.1.0"
+edition = "2021"
+description = "Gerrit-style one-commit-per-PR stacked PRs for GitHub, built on gh stack link"
+license = "MIT"
+
+# Binaries in src/bin: `prrit` and `git-remote-prrit` (the name git looks for) share the library.
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
