@@ -2,6 +2,10 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+// Parallel tests can share a clock tick on macOS; a counter keeps dirs unique.
+static DIR_SEQ: AtomicUsize = AtomicUsize::new(0);
 
 pub const TEST_ENV: &[(&str, &str)] = &[
     ("GIT_CONFIG_GLOBAL", "/dev/null"),

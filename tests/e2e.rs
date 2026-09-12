@@ -5,6 +5,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+// Tests run in parallel and the clock is too coarse on macOS to tell them
+// apart, so a counter keeps sandbox directories unique.
+static SANDBOX_SEQ: AtomicUsize = AtomicUsize::new(0);
 
 const FAKE_GH: &str = r#"#!/bin/sh
 echo "$@" >> "$PRRIT_GH_LOG"
