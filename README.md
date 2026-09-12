@@ -90,6 +90,7 @@ Runtime dependencies are `serde` and `serde_json` only; everything else is std p
 
 Commits follow Conventional Commits. On every push to `main`, [release-plz](https://release-plz.dev) keeps a release PR open with the version bump and CHANGELOG; merging it publishes the crate to crates.io, tags `vX.Y.Z`, creates the GitHub release, and the same workflow builds the binaries, uploads archives plus `SHA256SUMS` and `install.sh`, and pushes the formula to the Homebrew tap. Repository settings involved:
 
+- repository setting "Allow GitHub Actions to create and approve pull requests" (Settings → Actions → General), otherwise release-plz cannot open the release PR
 - crates.io Trusted Publishing: on the crate's settings page add a GitHub publisher for `sunya9/prrit` with workflow `release-plz.yml`; no `CARGO_REGISTRY_TOKEN` is needed (a brand-new crate has to be published by hand once before this works)
 - secret `RELEASE_PLZ_TOKEN` (optional PAT): lets CI run on the release PR
 - variable `HOMEBREW_TAP_REPO` (e.g. `sunya9/homebrew-tap`) and secret `HOMEBREW_TAP_TOKEN` (PAT with contents write on that repo): enable the tap update; without them that job is skipped
