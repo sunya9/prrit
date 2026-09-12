@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/sunya9/prrit/compare/v0.1.0...v0.1.1) - 2026-09-12
+
+### Other
+
+- note the Actions setting release-plz needs to open PRs
+- actually use the per-directory counter
+- keep temporary directories unique across parallel tests
+
 ## [0.1.0](https://github.com/sunya9/prrit/releases/tag/v0.1.0) - 2026-09-12
 
 ### Added
