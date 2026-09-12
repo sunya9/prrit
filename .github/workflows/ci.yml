@@ -25,6 +25,11 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
 
+  # Release profile (LTO, panic=abort) and every distribution target, so a
+  # release never fails on something CI never compiled.
+  build:
+    uses: ./.github/workflows/build.yml
+
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
