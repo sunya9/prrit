@@ -14,7 +14,12 @@ pub fn format_orphans(orphans: &[Pr]) -> Vec<String> {
     if orphans.is_empty() {
         return vec![];
     }
-    let mut lines = vec!["Open PRs from this account that are not in the current stack:".to_string()];
-    lines.extend(orphans.iter().map(|p| format!("  #{} {}  {}", p.number, p.title, p.url)));
+    let mut lines =
+        vec!["Open PRs from this account that are not in the current stack:".to_string()];
+    lines.extend(
+        orphans
+            .iter()
+            .map(|p| format!("  #{} {}  {}", p.number, p.title, p.url)),
+    );
     lines
 }

@@ -64,7 +64,9 @@ fn parse_cli(args: &[String]) -> Result<Cli, String> {
             "--review-remote" => {
                 cli.review_remote = it.next().ok_or("--review-remote needs a value")?.clone();
             }
-            s if s.starts_with("--review-remote=") => cli.review_remote = s["--review-remote=".len()..].to_string(),
+            s if s.starts_with("--review-remote=") => {
+                cli.review_remote = s["--review-remote=".len()..].to_string()
+            }
             s if s.starts_with('-') => return Err(format!("unknown option: {s}")),
             _ => positionals.push(arg.clone()),
         }
@@ -106,7 +108,14 @@ fn run(args: &[String], ctx: &Context<'_>) -> i32 {
                 path_dirs: None,
             },
         ),
-        "status" => status(ctx, &StatusOptions { remote: &cli.remote, base: cli.base.as_deref() }).map(|_| true),
+        "status" => status(
+            ctx,
+            &StatusOptions {
+                remote: &cli.remote,
+                base: cli.base.as_deref(),
+            },
+        )
+        .map(|_| true),
         other => {
             ctx.err(format!("unknown command: {other}\n"));
             ctx.out(USAGE);
@@ -126,7 +135,11 @@ fn run(args: &[String], ctx: &Context<'_>) -> i32 {
 /// git invokes the helper as `git-remote-prrit <remote> <url>`; the same
 /// binary also answers to `prrit remote-helper <remote> <url>` for wrappers.
 fn helper_args(argv: &[String]) -> Option<&[String]> {
-    let invoked_as = argv.first().map(|a| Path::new(a).file_name().map(|f| f.to_string_lossy().into_owned()))??;
+    let invoked_as = argv.first().map(|a| {
+        Path::new(a)
+            .file_name()
+            .map(|f| f.to_string_lossy().into_owned())
+    })??;
     if invoked_as == "git-remote-prrit" {
         return Some(&argv[1..]);
     }
@@ -141,17 +154,32 @@ pub fn run_main() {
     let argv: Vec<String> = std::env::args().collect();
     let cwd = std::env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
     let helper = helper_args(&argv).map(|a| a.to_vec());
-    let sink = StdSink { out_to_stderr: helper.is_some() };
+    let sink = StdSink {
+        out_to_stderr: helper.is_some(),
+    };
     let runner = ExecRunner {
-        inherit_target: if helper.is_some() { InheritTarget::Stderr } else { InheritTarget::Stdout },
+        inherit_target: if helper.is_some() {
+            InheritTarget::Stderr
+        } else {
+            InheritTarget::Stdout
+        },
     };
     let ctx = Context::new(&runner, &cwd, &sink);
 
     let code = match helper {
         Some(args) => {
             let mut io = remote_helper::StdIo::new();
-            let ok = remote_helper(&ctx, &mut io, args.first().map(String::as_str), args.get(1).map(String::as_str));
-            if ok { 0 } else { 1 }
+            let ok = remote_helper(
+                &ctx,
+                &mut io,
+                args.first().map(String::as_str),
+                args.get(1).map(String::as_str),
+            );
+            if ok {
+                0
+            } else {
+                1
+            }
         }
         None => run(&argv[1..], &ctx),
     };
@@ -168,7 +196,15 @@ mod tests {
 
     #[test]
     fn parses_positionals_and_options() {
-        let cli = parse_cli(&strs(&["init", "upstream", "develop", "--push-default", "--review-remote", "gerrit"])).unwrap();
+        let cli = parse_cli(&strs(&[
+            "init",
+            "upstream",
+            "develop",
+            "--push-default",
+            "--review-remote",
+            "gerrit",
+        ]))
+        .unwrap();
         assert_eq!(cli.command.as_deref(), Some("init"));
         assert_eq!(cli.remote, "upstream");
         assert_eq!(cli.base.as_deref(), Some("develop"));
@@ -182,8 +218,14 @@ mod tests {
 
     #[test]
     fn detects_helper_invocation() {
-        assert_eq!(helper_args(&strs(&["/usr/bin/git-remote-prrit", "review", "origin"])).unwrap(), &strs(&["review", "origin"])[..]);
-        assert_eq!(helper_args(&strs(&["prrit", "remote-helper", "review", "origin"])).unwrap(), &strs(&["review", "origin"])[..]);
+        assert_eq!(
+            helper_args(&strs(&["/usr/bin/git-remote-prrit", "review", "origin"])).unwrap(),
+            &strs(&["review", "origin"])[..]
+        );
+        assert_eq!(
+            helper_args(&strs(&["prrit", "remote-helper", "review", "origin"])).unwrap(),
+            &strs(&["review", "origin"])[..]
+        );
         assert!(helper_args(&strs(&["prrit", "status"])).is_none());
     }
 }

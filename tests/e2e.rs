@@ -29,7 +29,10 @@ struct Sandbox {
 
 impl Sandbox {
     fn new() -> Self {
-        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
         let root = std::env::temp_dir().join(format!("prrit-e2e-{}-{nanos}", std::process::id()));
         let bin = root.join("bin");
         fs::create_dir_all(&bin).unwrap();
@@ -44,13 +47,40 @@ impl Sandbox {
 
         let gh_log = root.join("gh.log");
         fs::write(&gh_log, "").unwrap();
-        let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap_or_default());
+        let path = format!(
+            "{}:{}",
+            bin.display(),
+            std::env::var("PATH").unwrap_or_default()
+        );
 
         let remote = root.join("remote.git");
         let work = root.join("work");
-        let sb = Sandbox { root, work, gh_log, path };
-        sb.git_in(&sb.root, &["init", "-q", "--bare", "-b", "main", remote.to_str().unwrap()]);
-        sb.git_in(&sb.root, &["clone", "-q", remote.to_str().unwrap(), sb.work.to_str().unwrap()]);
+        let sb = Sandbox {
+            root,
+            work,
+            gh_log,
+            path,
+        };
+        sb.git_in(
+            &sb.root,
+            &[
+                "init",
+                "-q",
+                "--bare",
+                "-b",
+                "main",
+                remote.to_str().unwrap(),
+            ],
+        );
+        sb.git_in(
+            &sb.root,
+            &[
+                "clone",
+                "-q",
+                remote.to_str().unwrap(),
+                sb.work.to_str().unwrap(),
+            ],
+        );
         sb.git(&["checkout", "-q", "-b", "main"]);
         sb.commit("base.txt", "chore: base");
         sb.git(&["push", "-q", "-u", "origin", "main"]);
@@ -77,7 +107,11 @@ impl Sandbox {
 
     fn git_in(&self, cwd: &Path, args: &[&str]) -> String {
         let out = self.cmd("git", args, cwd);
-        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
         String::from_utf8_lossy(&out.stdout).trim().to_string()
     }
 
@@ -92,7 +126,11 @@ impl Sandbox {
     }
 
     fn gh_calls(&self) -> Vec<String> {
-        fs::read_to_string(&self.gh_log).unwrap().lines().map(String::from).collect()
+        fs::read_to_string(&self.gh_log)
+            .unwrap()
+            .lines()
+            .map(String::from)
+            .collect()
     }
 }
 
@@ -111,7 +149,11 @@ fn set_exec(path: &Path) {
 fn init_then_push_review_creates_and_links_prs() {
     let sb = Sandbox::new();
     let out = sb.cmd("prrit", &["init"], &sb.work);
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert_eq!(sb.git(&["remote", "get-url", "review"]), "prrit::origin");
 
     sb.git(&["checkout", "-q", "-b", "feature"]);
@@ -124,18 +166,30 @@ fn init_then_push_review_creates_and_links_prs() {
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(out.status.success(), "{stderr}");
     assert!(stderr.contains("HEAD -> refs/for/main"), "{stderr}");
-    assert!(stderr.contains("Added Change-Id to 1 commit(s)."), "{stderr}");
+    assert!(
+        stderr.contains("Added Change-Id to 1 commit(s)."),
+        "{stderr}"
+    );
 
     let log = sb.git(&["log", "--format=%B", "origin/main..HEAD"]);
-    let ids: Vec<&str> = log.lines().filter_map(|l| l.strip_prefix("Change-Id: ")).collect();
+    let ids: Vec<&str> = log
+        .lines()
+        .filter_map(|l| l.strip_prefix("Change-Id: "))
+        .collect();
     assert_eq!(ids.len(), 2);
     let branches = sb.git(&["ls-remote", "--heads", "origin", "refs/heads/prrit/alice/*"]);
     for id in &ids {
-        assert!(branches.contains(&format!("refs/heads/prrit/alice/{}", &id[1..9])), "{branches}");
+        assert!(
+            branches.contains(&format!("refs/heads/prrit/alice/{}", &id[1..9])),
+            "{branches}"
+        );
     }
 
     let calls = sb.gh_calls();
-    let creates: Vec<&String> = calls.iter().filter(|c| c.starts_with("pr create")).collect();
+    let creates: Vec<&String> = calls
+        .iter()
+        .filter(|c| c.starts_with("pr create"))
+        .collect();
     assert_eq!(creates.len(), 2);
     assert!(creates[0].contains("--base main"));
     assert!(creates[1].contains("--base prrit/alice/"));
@@ -152,9 +206,18 @@ fn wip_option_creates_drafts_and_bare_push_works_with_push_default() {
     sb.commit("a.txt", "feat: a");
 
     let out = sb.cmd("git", &["push"], &sb.work);
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     let calls = sb.gh_calls();
-    assert!(calls.iter().any(|c| c.starts_with("pr create --head prrit/alice/") && c.ends_with("--draft")), "{calls:?}");
+    assert!(
+        calls
+            .iter()
+            .any(|c| c.starts_with("pr create --head prrit/alice/") && c.ends_with("--draft")),
+        "{calls:?}"
+    );
 }
 
 #[test]
@@ -179,26 +242,63 @@ fn warns_and_overwrites_when_the_branch_changed_on_the_server() {
     sb.git(&["checkout", "-q", "-b", "feature"]);
     sb.commit("a.txt", "feat: a");
     let first = sb.cmd("git", &["push", "review", "HEAD:refs/for/main"], &sb.work);
-    assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
+    assert!(
+        first.status.success(),
+        "{}",
+        String::from_utf8_lossy(&first.stderr)
+    );
     let branch = sb.git(&["ls-remote", "--heads", "origin", "refs/heads/prrit/alice/*"]);
-    let branch = branch.split("refs/heads/").nth(1).unwrap().trim().to_string();
+    let branch = branch
+        .split("refs/heads/")
+        .nth(1)
+        .unwrap()
+        .trim()
+        .to_string();
 
     // Someone rewrites the branch server-side from another clone.
     let other = sb.root.join("other");
-    sb.git_in(&sb.root, &["clone", "-q", sb.root.join("remote.git").to_str().unwrap(), other.to_str().unwrap()]);
-    sb.git_in(&other, &["checkout", "-q", "-b", "x", &format!("origin/{branch}")]);
+    sb.git_in(
+        &sb.root,
+        &[
+            "clone",
+            "-q",
+            sb.root.join("remote.git").to_str().unwrap(),
+            other.to_str().unwrap(),
+        ],
+    );
+    sb.git_in(
+        &other,
+        &["checkout", "-q", "-b", "x", &format!("origin/{branch}")],
+    );
     fs::write(other.join("suggestion.txt"), "applied\n").unwrap();
     sb.git_in(&other, &["add", "suggestion.txt"]);
     sb.git_in(&other, &["commit", "-q", "-m", "Apply suggestion"]);
-    sb.git_in(&other, &["push", "-q", "origin", &format!("HEAD:refs/heads/{branch}")]);
+    sb.git_in(
+        &other,
+        &["push", "-q", "origin", &format!("HEAD:refs/heads/{branch}")],
+    );
     let server_tip = sb.git_in(&other, &["rev-parse", "HEAD"]);
 
     let second = sb.cmd("git", &["push", "review", "HEAD:refs/for/main"], &sb.work);
     let stderr = String::from_utf8_lossy(&second.stderr);
     assert!(second.status.success(), "{stderr}");
-    assert!(stderr.contains(&format!("{branch} (was {}) changed on GitHub", &server_tip[..7])), "{stderr}");
-    assert!(stderr.contains(&format!("git reset --hard origin/{branch}")), "{stderr}");
-    let now = sb.git(&["ls-remote", "--heads", "origin", &format!("refs/heads/{branch}")]);
+    assert!(
+        stderr.contains(&format!(
+            "{branch} (was {}) changed on GitHub",
+            &server_tip[..7]
+        )),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains(&format!("git reset --hard origin/{branch}")),
+        "{stderr}"
+    );
+    let now = sb.git(&[
+        "ls-remote",
+        "--heads",
+        "origin",
+        &format!("refs/heads/{branch}"),
+    ]);
     assert!(now.starts_with(&sb.git(&["rev-parse", "HEAD"])), "{now}");
 }
 
@@ -213,6 +313,10 @@ fn status_and_help_run_from_the_binary() {
     assert_eq!(out.status.code(), Some(1));
 
     let out = sb.cmd("prrit", &["status"], &sb.work);
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     assert!(String::from_utf8_lossy(&out.stdout).contains("Nothing on top of origin/main."));
 }

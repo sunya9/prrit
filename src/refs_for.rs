@@ -32,7 +32,10 @@ pub fn parse_for_ref(dst: &str) -> Result<ForRef> {
             }
         }
     }
-    Ok(ForRef { base: base.to_string(), draft })
+    Ok(ForRef {
+        base: base.to_string(),
+        draft,
+    })
 }
 
 #[cfg(test)]
@@ -45,7 +48,13 @@ mod tests {
 
     #[test]
     fn extracts_base() {
-        assert_eq!(ok("refs/for/main"), ForRef { base: "main".into(), draft: false });
+        assert_eq!(
+            ok("refs/for/main"),
+            ForRef {
+                base: "main".into(),
+                draft: false
+            }
+        );
         assert_eq!(ok("refs/for/release/1.0").base, "release/1.0");
     }
 
@@ -58,8 +67,14 @@ mod tests {
 
     #[test]
     fn rejects_other_refs_and_options() {
-        assert!(parse_for_ref("refs/heads/main").unwrap_err().to_string().contains("refs/for/<base>"));
+        assert!(parse_for_ref("refs/heads/main")
+            .unwrap_err()
+            .to_string()
+            .contains("refs/for/<base>"));
         assert!(parse_for_ref("refs/for/").is_err());
-        assert!(parse_for_ref("refs/for/main%topic=x").unwrap_err().to_string().contains("topic=x"));
+        assert!(parse_for_ref("refs/for/main%topic=x")
+            .unwrap_err()
+            .to_string()
+            .contains("topic=x"));
     }
 }

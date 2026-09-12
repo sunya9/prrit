@@ -61,8 +61,18 @@ pub fn extract_change_id(message: &str) -> Option<String> {
 }
 
 pub fn append_change_id(message: &str, change_id: &str) -> String {
-    let separator = if trailer_block(message).is_some() { "\n" } else { "\n\n" };
-    format!("{}{}{}: {}\n", message.trim_end(), separator, KEY, change_id)
+    let separator = if trailer_block(message).is_some() {
+        "\n"
+    } else {
+        "\n\n"
+    };
+    format!(
+        "{}{}{}: {}\n",
+        message.trim_end(),
+        separator,
+        KEY,
+        change_id
+    )
 }
 
 pub fn strip_change_id(message: &str) -> String {
@@ -95,12 +105,21 @@ pub fn generate_change_id() -> String {
         .unwrap_or(0);
     let salt = Box::new(0u8);
     let addr = &*salt as *const u8 as usize;
-    let mut state = [nanos as u64, (nanos >> 64) as u64, std::process::id() as u64, addr as u64];
+    let mut state = [
+        nanos as u64,
+        (nanos >> 64) as u64,
+        std::process::id() as u64,
+        addr as u64,
+    ];
     let mut id = String::with_capacity(41);
     id.push('I');
     for round in 0..5u64 {
         // xorshift-style mixing; not cryptographic, just well spread.
-        let mut x = state[0] ^ state[1].rotate_left(17) ^ state[2].wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ state[3] ^ round;
+        let mut x = state[0]
+            ^ state[1].rotate_left(17)
+            ^ state[2].wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ state[3]
+            ^ round;
         x ^= x >> 33;
         x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);
         x ^= x >> 33;
@@ -151,8 +170,14 @@ mod tests {
 
     #[test]
     fn appends_a_new_trailer_block() {
-        assert_eq!(append_change_id("feat: x\n\nbody\n", "Iabc"), "feat: x\n\nbody\n\nChange-Id: Iabc\n");
-        assert_eq!(append_change_id("feat: x", "Iabc"), "feat: x\n\nChange-Id: Iabc\n");
+        assert_eq!(
+            append_change_id("feat: x\n\nbody\n", "Iabc"),
+            "feat: x\n\nbody\n\nChange-Id: Iabc\n"
+        );
+        assert_eq!(
+            append_change_id("feat: x", "Iabc"),
+            "feat: x\n\nChange-Id: Iabc\n"
+        );
     }
 
     #[test]
@@ -166,8 +191,14 @@ mod tests {
     #[test]
     fn strips_only_the_change_id_line() {
         let msg = "feat: x\n\nbody\n\nSigned-off-by: me\nChange-Id: Iabc\n";
-        assert_eq!(strip_change_id(msg), "feat: x\n\nbody\n\nSigned-off-by: me\n");
-        assert_eq!(strip_change_id(MSG_WITH_ID), "feat: add login\n\nSome body text.\n");
+        assert_eq!(
+            strip_change_id(msg),
+            "feat: x\n\nbody\n\nSigned-off-by: me\n"
+        );
+        assert_eq!(
+            strip_change_id(MSG_WITH_ID),
+            "feat: add login\n\nSome body text.\n"
+        );
         assert_eq!(strip_change_id("feat: x\n"), "feat: x\n");
     }
 

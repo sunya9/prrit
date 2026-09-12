@@ -3,7 +3,12 @@ use std::fmt;
 #[derive(Debug)]
 pub enum Error {
     Message(String),
-    Command { cmd: String, args: Vec<String>, stderr: String, status: Option<i32> },
+    Command {
+        cmd: String,
+        args: Vec<String>,
+        stderr: String,
+        status: Option<i32>,
+    },
 }
 
 impl Error {
@@ -16,7 +21,12 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Message(m) => f.write_str(m),
-            Error::Command { cmd, args, stderr, status } => {
+            Error::Command {
+                cmd,
+                args,
+                stderr,
+                status,
+            } => {
                 let status = status.map_or("signal".to_string(), |s| s.to_string());
                 write!(f, "{cmd} {} failed (exit {status})", args.join(" "))?;
                 if !stderr.trim().is_empty() {

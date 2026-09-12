@@ -1,7 +1,9 @@
 use crate::context::{resolve_base, resolve_login, Context};
 use crate::error::Result;
 use crate::format::{format_entry, format_orphans};
-use crate::plan::{build_plan, divergence_warning, prefix_for, remote_divergence, Action, Commit, PlanInput};
+use crate::plan::{
+    build_plan, divergence_warning, prefix_for, remote_divergence, Action, Commit, PlanInput,
+};
 
 pub struct StatusOptions<'a> {
     pub remote: &'a str,
@@ -23,7 +25,11 @@ pub fn status(ctx: &Context<'_>, opts: &StatusOptions<'_>) -> Result<()> {
     let mut without_id = Vec::new();
     for c in &raw {
         match &c.change_id {
-            Some(id) => with_id.push(Commit { sha: c.sha.clone(), message: c.message.clone(), change_id: id.clone() }),
+            Some(id) => with_id.push(Commit {
+                sha: c.sha.clone(),
+                message: c.message.clone(),
+                change_id: id.clone(),
+            }),
             None => without_id.push(c.sha[..7.min(c.sha.len())].to_string()),
         }
     }
@@ -40,7 +46,9 @@ pub fn status(ctx: &Context<'_>, opts: &StatusOptions<'_>) -> Result<()> {
         stacks: &stacks,
     });
 
-    ctx.out(format!("Stack on {upstream} (bottom to top, * = not pushed):"));
+    ctx.out(format!(
+        "Stack on {upstream} (bottom to top, * = not pushed):"
+    ));
     for entry in &plan.entries {
         ctx.out(format_entry(entry));
     }
@@ -55,8 +63,14 @@ pub fn status(ctx: &Context<'_>, opts: &StatusOptions<'_>) -> Result<()> {
         ctx.err(format!("warning: {w}"));
     }
     let diverged = remote_divergence(&plan.pushes, |sha| ctx.git.has_commit(sha));
-    if let (false, Some(top)) = (diverged.is_empty(), plan.entries.iter().rev().find(|e| e.action != Action::Skip)) {
-        ctx.err(format!("warning: {}", divergence_warning(&diverged, opts.remote, &top.branch, false)));
+    if let (false, Some(top)) = (
+        diverged.is_empty(),
+        plan.entries.iter().rev().find(|e| e.action != Action::Skip),
+    ) {
+        ctx.err(format!(
+            "warning: {}",
+            divergence_warning(&diverged, opts.remote, &top.branch, false)
+        ));
     }
     if !plan.superseded.is_empty() {
         ctx.out("PRs still in the stack but no longer in the series (detached on next push):");
@@ -82,15 +96,28 @@ mod tests {
         let branch_a = "prrit/octocat/11111111";
         let r = runner(State {
             commits: vec![
-                (a.clone(), format!("feat: a\n\nChange-Id: I{}\n", "1".repeat(40))),
+                (
+                    a.clone(),
+                    format!("feat: a\n\nChange-Id: I{}\n", "1".repeat(40)),
+                ),
                 ("b".repeat(40), "feat: b\n".into()),
             ],
             remote_refs: vec![(branch_a.into(), "0".repeat(40))],
-            prs: vec![pr(10, branch_a, "main", "feat: a"), pr(12, "prrit/octocat/deadbeef", "main", "old")],
+            prs: vec![
+                pr(10, branch_a, "main", "feat: a"),
+                pr(12, "prrit/octocat/deadbeef", "main", "old"),
+            ],
             ..Default::default()
         });
         let rec = Recorder::default();
-        status(&context(&r, &rec), &StatusOptions { remote: "origin", base: None }).unwrap();
+        status(
+            &context(&r, &rec),
+            &StatusOptions {
+                remote: "origin",
+                base: None,
+            },
+        )
+        .unwrap();
 
         let text = rec.out_text();
         assert!(text.contains("aaaaaaa  #10 OPEN     feat: a *"), "{text}");
@@ -111,16 +138,29 @@ mod tests {
     fn points_at_the_github_version_when_the_remote_diverged() {
         let branch_a = "prrit/octocat/11111111";
         let r = runner(State {
-            commits: vec![("a".repeat(40), format!("feat: a\n\nChange-Id: I{}\n", "1".repeat(40)))],
+            commits: vec![(
+                "a".repeat(40),
+                format!("feat: a\n\nChange-Id: I{}\n", "1".repeat(40)),
+            )],
             remote_refs: vec![(branch_a.into(), "f".repeat(40))],
             prs: vec![pr(10, branch_a, "main", "feat: a")],
             ..Default::default()
         })
         .fail_when(|cmd, args| cmd == "git" && args[0] == "cat-file");
         let rec = Recorder::default();
-        status(&context(&r, &rec), &StatusOptions { remote: "origin", base: None }).unwrap();
+        status(
+            &context(&r, &rec),
+            &StatusOptions {
+                remote: "origin",
+                base: None,
+            },
+        )
+        .unwrap();
         let err = rec.err_text();
         assert!(err.contains("the next push overwrites it"), "{err}");
-        assert!(err.contains(&format!("git reset --hard origin/{branch_a}")), "{err}");
+        assert!(
+            err.contains(&format!("git reset --hard origin/{branch_a}")),
+            "{err}"
+        );
     }
 }

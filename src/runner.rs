@@ -52,13 +52,27 @@ impl Runner for ExecRunner {
                 InheritTarget::Stdout => Stdio::inherit(),
                 InheritTarget::Stderr => Stdio::from(std::io::stderr()),
             };
-            let status = command.stdin(Stdio::null()).stdout(stdout).stderr(Stdio::inherit()).status()?;
-            return if status.success() { Ok(String::new()) } else { Err(fail(String::new(), status.code())) };
+            let status = command
+                .stdin(Stdio::null())
+                .stdout(stdout)
+                .stderr(Stdio::inherit())
+                .status()?;
+            return if status.success() {
+                Ok(String::new())
+            } else {
+                Err(fail(String::new(), status.code()))
+            };
         }
 
-        command.stdin(if opts.input.is_some() { Stdio::piped() } else { Stdio::null() });
+        command.stdin(if opts.input.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        });
         command.stdout(Stdio::piped()).stderr(Stdio::piped());
-        let mut child = command.spawn().map_err(|e| Error::msg(format!("failed to run {cmd}: {e}")))?;
+        let mut child = command
+            .spawn()
+            .map_err(|e| Error::msg(format!("failed to run {cmd}: {e}")))?;
         if let Some(input) = opts.input {
             use std::io::Write;
             if let Some(mut stdin) = child.stdin.take() {
@@ -70,7 +84,10 @@ impl Runner for ExecRunner {
         if output.status.success() {
             Ok(stdout)
         } else {
-            Err(fail(String::from_utf8_lossy(&output.stderr).into_owned(), output.status.code()))
+            Err(fail(
+                String::from_utf8_lossy(&output.stderr).into_owned(),
+                output.status.code(),
+            ))
         }
     }
 }
@@ -118,16 +135,30 @@ pub mod fake {
         }
 
         pub fn joined(&self, cmd: &str) -> Vec<String> {
-            self.calls.borrow().iter().filter(|c| c.cmd == cmd).map(|c| c.args.join(" ")).collect()
+            self.calls
+                .borrow()
+                .iter()
+                .filter(|c| c.cmd == cmd)
+                .map(|c| c.args.join(" "))
+                .collect()
         }
     }
 
     impl Runner for FakeRunner {
         fn run(&self, cmd: &str, args: &[&str], opts: &RunOptions<'_>) -> Result<String> {
             let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
-            self.calls.borrow_mut().push(Call { cmd: cmd.to_string(), args: args.clone(), inherit: opts.inherit });
+            self.calls.borrow_mut().push(Call {
+                cmd: cmd.to_string(),
+                args: args.clone(),
+                inherit: opts.inherit,
+            });
             if self.failures.iter().any(|f| f(cmd, &args)) {
-                return Err(Error::Command { cmd: cmd.into(), args, stderr: "simulated failure".into(), status: Some(1) });
+                return Err(Error::Command {
+                    cmd: cmd.into(),
+                    args,
+                    stderr: "simulated failure".into(),
+                    status: Some(1),
+                });
             }
             for r in &self.responders {
                 if let Some(out) = r(cmd, &args) {

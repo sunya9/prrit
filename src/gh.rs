@@ -39,29 +39,64 @@ pub struct Gh<'a> {
 
 impl<'a> Gh<'a> {
     pub fn new(runner: &'a dyn Runner, cwd: &Path) -> Self {
-        Gh { runner, cwd: cwd.to_path_buf() }
+        Gh {
+            runner,
+            cwd: cwd.to_path_buf(),
+        }
     }
 
     fn gh(&self, args: &[&str]) -> Result<String> {
-        self.runner.run("gh", args, &RunOptions { cwd: Some(&self.cwd), ..Default::default() })
+        self.runner.run(
+            "gh",
+            args,
+            &RunOptions {
+                cwd: Some(&self.cwd),
+                ..Default::default()
+            },
+        )
     }
 
     pub fn login(&self) -> Result<String> {
-        Ok(self.gh(&["api", "user", "--jq", ".login"])?.trim().to_string())
+        Ok(self
+            .gh(&["api", "user", "--jq", ".login"])?
+            .trim()
+            .to_string())
     }
 
     pub fn default_branch(&self) -> Result<String> {
-        Ok(self.gh(&["repo", "view", "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name"])?.trim().to_string())
+        Ok(self
+            .gh(&[
+                "repo",
+                "view",
+                "--json",
+                "defaultBranchRef",
+                "--jq",
+                ".defaultBranchRef.name",
+            ])?
+            .trim()
+            .to_string())
     }
 
     pub fn list_prs(&self) -> Result<Vec<Pr>> {
-        let out = self.gh(&["pr", "list", "--author", "@me", "--state", "all", "--limit", "300", "--json", PR_FIELDS])?;
+        let out = self.gh(&[
+            "pr", "list", "--author", "@me", "--state", "all", "--limit", "300", "--json",
+            PR_FIELDS,
+        ])?;
         Ok(serde_json::from_str(&out)?)
     }
 
     pub fn create_pr(&self, input: &CreatePr<'_>) -> Result<CreatedPr> {
         let mut args = vec![
-            "pr", "create", "--head", input.head, "--base", input.base, "--title", input.title, "--body", input.body,
+            "pr",
+            "create",
+            "--head",
+            input.head,
+            "--base",
+            input.base,
+            "--title",
+            input.title,
+            "--body",
+            input.body,
         ];
         if input.draft {
             args.push("--draft");
@@ -92,7 +127,12 @@ impl<'a> Gh<'a> {
 
     // gh expands {owner}/{repo} from the current repository.
     pub fn list_stacks(&self) -> Result<Vec<Stack>> {
-        let out = self.gh(&["api", "--paginate", "--slurp", "repos/{owner}/{repo}/stacks"])?;
+        let out = self.gh(&[
+            "api",
+            "--paginate",
+            "--slurp",
+            "repos/{owner}/{repo}/stacks",
+        ])?;
         let pages: Vec<Vec<Stack>> = serde_json::from_str(&out)?;
         Ok(pages.into_iter().flatten().collect())
     }
@@ -108,12 +148,22 @@ impl<'a> Gh<'a> {
         let mut args = vec!["stack", "link", "--base", base];
         args.extend(numbers.iter().map(String::as_str));
         self.runner
-            .run("gh", &args, &RunOptions { cwd: Some(&self.cwd), inherit: true, ..Default::default() })
+            .run(
+                "gh",
+                &args,
+                &RunOptions {
+                    cwd: Some(&self.cwd),
+                    inherit: true,
+                    ..Default::default()
+                },
+            )
             .map(drop)
     }
 
     pub fn has_stack_extension(&self) -> bool {
-        self.gh(&["extension", "list"]).map(|out| out.lines().any(|l| l.starts_with("gh stack\t"))).unwrap_or(false)
+        self.gh(&["extension", "list"])
+            .map(|out| out.lines().any(|l| l.starts_with("gh stack\t")))
+            .unwrap_or(false)
     }
 }
 
@@ -128,7 +178,8 @@ mod tests {
 
     #[test]
     fn login_uses_the_api() {
-        let runner = FakeRunner::default().on(|_, args| (args[0] == "api").then(|| "octocat\n".to_string()));
+        let runner =
+            FakeRunner::default().on(|_, args| (args[0] == "api").then(|| "octocat\n".to_string()));
         assert_eq!(gh(&runner).login().unwrap(), "octocat");
         assert_eq!(runner.joined("gh"), vec!["api user --jq .login"]);
     }
@@ -147,24 +198,54 @@ mod tests {
 
     #[test]
     fn create_pr_returns_number_and_url() {
-        let runner = FakeRunner::default().on(|_, _| Some("https://github.com/o/r/pull/42\n".to_string()));
+        let runner =
+            FakeRunner::default().on(|_, _| Some("https://github.com/o/r/pull/42\n".to_string()));
         let created = gh(&runner)
-            .create_pr(&CreatePr { head: "h", base: "main", title: "feat: x", body: "", draft: true })
+            .create_pr(&CreatePr {
+                head: "h",
+                base: "main",
+                title: "feat: x",
+                body: "",
+                draft: true,
+            })
             .unwrap();
         assert_eq!(created.number, 42);
         assert_eq!(created.url, "https://github.com/o/r/pull/42");
         assert_eq!(
             runner.args_of("gh", "pr")[0],
-            vec!["pr", "create", "--head", "h", "--base", "main", "--title", "feat: x", "--body", "", "--draft"]
+            vec![
+                "pr", "create", "--head", "h", "--base", "main", "--title", "feat: x", "--body",
+                "", "--draft"
+            ]
         );
     }
 
     #[test]
     fn edit_pr_passes_only_changed_fields() {
         let runner = FakeRunner::default().on(|_, _| Some(String::new()));
-        gh(&runner).edit_pr(42, &EditPr { base: Some("main"), ..Default::default() }).unwrap();
-        gh(&runner).edit_pr(42, &EditPr { title: Some("t"), body: Some("b"), base: None }).unwrap();
-        assert_eq!(runner.joined("gh"), vec!["pr edit 42 --base main", "pr edit 42 --title t --body b"]);
+        gh(&runner)
+            .edit_pr(
+                42,
+                &EditPr {
+                    base: Some("main"),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        gh(&runner)
+            .edit_pr(
+                42,
+                &EditPr {
+                    title: Some("t"),
+                    body: Some("b"),
+                    base: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            runner.joined("gh"),
+            vec!["pr edit 42 --base main", "pr edit 42 --title t --body b"]
+        );
     }
 
     #[test]
@@ -177,10 +258,16 @@ mod tests {
             }
         });
         let stacks = gh(&runner).list_stacks().unwrap();
-        assert_eq!(stacks.iter().map(|s| s.number).collect::<Vec<_>>(), vec![1, 2]);
+        assert_eq!(
+            stacks.iter().map(|s| s.number).collect::<Vec<_>>(),
+            vec![1, 2]
+        );
         assert_eq!(stacks[0].pull_requests[0].number, 5);
         gh(&runner).unstack(7).unwrap();
-        assert_eq!(runner.joined("gh")[1], "api --method POST repos/{owner}/{repo}/stacks/7/unstack");
+        assert_eq!(
+            runner.joined("gh")[1],
+            "api --method POST repos/{owner}/{repo}/stacks/7/unstack"
+        );
     }
 
     #[test]
@@ -188,13 +275,17 @@ mod tests {
         let runner = FakeRunner::default().on(|_, _| Some(String::new()));
         gh(&runner).stack_link("main", &[11, 12]).unwrap();
         let calls = runner.calls.borrow();
-        assert_eq!(calls[0].args, vec!["stack", "link", "--base", "main", "11", "12"]);
+        assert_eq!(
+            calls[0].args,
+            vec!["stack", "link", "--base", "main", "11", "12"]
+        );
         assert!(calls[0].inherit);
     }
 
     #[test]
     fn detects_stack_extension() {
-        let with = FakeRunner::default().on(|_, _| Some("gh stack\tgithub/gh-stack\tv0.1.1\n".to_string()));
+        let with = FakeRunner::default()
+            .on(|_, _| Some("gh stack\tgithub/gh-stack\tv0.1.1\n".to_string()));
         assert!(gh(&with).has_stack_extension());
         let without = FakeRunner::default().on(|_, _| Some(String::new()));
         assert!(!gh(&without).has_stack_extension());

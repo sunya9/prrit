@@ -2,7 +2,9 @@ use crate::context::{resolve_login, Context};
 use crate::error::{Error, Result};
 use crate::format::{format_entry, format_orphans};
 use crate::gh::{CreatePr, EditPr};
-use crate::plan::{build_plan, divergence_warning, prefix_for, remote_divergence, Action, PlanInput, Pr};
+use crate::plan::{
+    build_plan, divergence_warning, prefix_for, remote_divergence, Action, PlanInput, Pr,
+};
 
 pub struct UploadOptions<'a> {
     pub remote: &'a str,
@@ -18,12 +20,18 @@ pub fn upload(ctx: &Context<'_>, opts: &UploadOptions<'_>) -> Result<()> {
     let upstream = format!("{}/{base}", opts.remote);
     let raw = ctx.git.rev_list(&upstream, opts.ref_name)?;
     if raw.is_empty() {
-        return Err(Error::msg(format!("nothing to push: {} has no commits on top of {upstream}", opts.ref_name)));
+        return Err(Error::msg(format!(
+            "nothing to push: {} has no commits on top of {upstream}",
+            opts.ref_name
+        )));
     }
 
     let ensured = ctx.git.ensure_change_ids(&raw, opts.ref_name)?;
     if ensured.rewritten > 0 {
-        ctx.out(format!("Added Change-Id to {} commit(s).", ensured.rewritten));
+        ctx.out(format!(
+            "Added Change-Id to {} commit(s).",
+            ensured.rewritten
+        ));
     }
 
     let login = resolve_login(ctx)?;
@@ -40,13 +48,23 @@ pub fn upload(ctx: &Context<'_>, opts: &UploadOptions<'_>) -> Result<()> {
     });
 
     let diverged = remote_divergence(&plan.pushes, |sha| ctx.git.has_commit(sha));
-    if let (false, Some(top)) = (diverged.is_empty(), plan.entries.iter().rev().find(|e| e.action != Action::Skip)) {
-        ctx.err(format!("warning: {}", divergence_warning(&diverged, opts.remote, &top.branch, true)));
+    if let (false, Some(top)) = (
+        diverged.is_empty(),
+        plan.entries.iter().rev().find(|e| e.action != Action::Skip),
+    ) {
+        ctx.err(format!(
+            "warning: {}",
+            divergence_warning(&diverged, opts.remote, &top.branch, true)
+        ));
     }
 
     ctx.git.push(opts.remote, &plan.pushes)?;
     if !plan.pushes.is_empty() {
-        ctx.out(format!("Pushed {} branch(es) to {}.", plan.pushes.len(), opts.remote));
+        ctx.out(format!(
+            "Pushed {} branch(es) to {}.",
+            plan.pushes.len(),
+            opts.remote
+        ));
     }
 
     let mut numbers = Vec::new();
@@ -101,7 +119,11 @@ pub fn upload(ctx: &Context<'_>, opts: &UploadOptions<'_>) -> Result<()> {
 
     ctx.out(format!("Stack on {upstream}:"));
     for entry in &plan.entries {
-        let url = entry.pr.as_ref().map(|p| format!("  {}", p.url)).unwrap_or_default();
+        let url = entry
+            .pr
+            .as_ref()
+            .map(|p| format!("  {}", p.url))
+            .unwrap_or_default();
         ctx.out(format!("{}{url}", format_entry(entry)));
     }
     for w in &plan.warnings {
@@ -146,8 +168,16 @@ pub mod fixture {
 
     pub fn runner(state: State) -> FakeRunner {
         let next_pr = Rc::new(Cell::new(500u64));
-        let log: String = state.commits.iter().map(|(sha, msg)| format!("{sha}\nparent\n{msg}\n\0")).collect();
-        let ls_remote: String = state.remote_refs.iter().map(|(b, sha)| format!("{sha}\trefs/heads/{b}\n")).collect();
+        let log: String = state
+            .commits
+            .iter()
+            .map(|(sha, msg)| format!("{sha}\nparent\n{msg}\n\0"))
+            .collect();
+        let ls_remote: String = state
+            .remote_refs
+            .iter()
+            .map(|(b, sha)| format!("{sha}\trefs/heads/{b}\n"))
+            .collect();
         let prs = serde_json::to_string(&serde_json::json!(state
             .prs
             .iter()
@@ -174,10 +204,21 @@ pub mod fixture {
                     return None;
                 }
                 match args[0].as_str() {
-                    "symbolic-ref" => Some(if args[2] == "refs/remotes/origin/HEAD" { "origin/main\n" } else { "feature\n" }.into()),
+                    "symbolic-ref" => Some(
+                        if args[2] == "refs/remotes/origin/HEAD" {
+                            "origin/main\n"
+                        } else {
+                            "feature\n"
+                        }
+                        .into(),
+                    ),
                     "fetch" | "push" | "cat-file" => Some(String::new()),
                     "log" => Some(log.clone()),
-                    "config" => Some(if args.get(2).map(String::as_str) == Some("--get") { "octocat\n".into() } else { String::new() }),
+                    "config" => Some(if args.get(2).map(String::as_str) == Some("--get") {
+                        "octocat\n".into()
+                    } else {
+                        String::new()
+                    }),
                     "ls-remote" => Some(ls_remote.clone()),
                     _ => None,
                 }
@@ -221,26 +262,45 @@ mod tests {
     const BRANCH_A: &str = "prrit/octocat/11111111";
     const BRANCH_B: &str = "prrit/octocat/22222222";
 
-    fn opts<'a>(remote: &'a str, base: &'a str, draft: bool, ref_name: &'a str) -> UploadOptions<'a> {
-        UploadOptions { remote, base, draft, ref_name }
+    fn opts<'a>(
+        remote: &'a str,
+        base: &'a str,
+        draft: bool,
+        ref_name: &'a str,
+    ) -> UploadOptions<'a> {
+        UploadOptions {
+            remote,
+            base,
+            draft,
+            ref_name,
+        }
     }
 
     #[test]
     fn first_push_pushes_creates_and_links() {
         let r = runner(State {
             commits: vec![
-                (A.into(), format!("feat: a\n\nbody a\n\nChange-Id: {ID_A}\n")),
+                (
+                    A.into(),
+                    format!("feat: a\n\nbody a\n\nChange-Id: {ID_A}\n"),
+                ),
                 (B.into(), format!("feat: b\n\nChange-Id: {ID_B}\n")),
             ],
             ..Default::default()
         });
         let rec = Recorder::default();
-        upload(&context(&r, &rec), &opts("origin", "main", false, "refs/heads/feature")).unwrap();
+        upload(
+            &context(&r, &rec),
+            &opts("origin", "main", false, "refs/heads/feature"),
+        )
+        .unwrap();
 
         assert_eq!(
             r.args_of("git", "push"),
             vec![vec![
-                "push".to_string(), "--quiet".into(), "--atomic".into(),
+                "push".to_string(),
+                "--quiet".into(),
+                "--atomic".into(),
                 format!("--force-with-lease=refs/heads/{BRANCH_A}:"),
                 format!("--force-with-lease=refs/heads/{BRANCH_B}:"),
                 "origin".into(),
@@ -249,20 +309,37 @@ mod tests {
             ]]
         );
         let gh = r.joined("gh");
-        assert!(gh.contains(&format!("pr create --head {BRANCH_A} --base main --title feat: a --body body a\n")));
-        assert!(gh.contains(&format!("pr create --head {BRANCH_B} --base {BRANCH_A} --title feat: b --body ")));
+        assert!(gh.contains(&format!(
+            "pr create --head {BRANCH_A} --base main --title feat: a --body body a\n"
+        )));
+        assert!(gh.contains(&format!(
+            "pr create --head {BRANCH_B} --base {BRANCH_A} --title feat: b --body "
+        )));
         assert!(gh.contains(&"stack link --base main 500 501".to_string()));
         assert!(rec.out_text().contains("https://github.com/o/r/pull/500"));
     }
 
     #[test]
     fn honours_remote_base_draft_and_ref() {
-        let r = runner(State { commits: vec![(A.into(), format!("feat: a\n\nChange-Id: {ID_A}\n"))], ..Default::default() });
+        let r = runner(State {
+            commits: vec![(A.into(), format!("feat: a\n\nChange-Id: {ID_A}\n"))],
+            ..Default::default()
+        });
         let rec = Recorder::default();
-        upload(&context(&r, &rec), &opts("upstream", "develop", true, "refs/heads/x")).unwrap();
-        assert_eq!(r.args_of("git", "fetch"), vec![vec!["fetch", "--quiet", "upstream", "develop"]]);
+        upload(
+            &context(&r, &rec),
+            &opts("upstream", "develop", true, "refs/heads/x"),
+        )
+        .unwrap();
+        assert_eq!(
+            r.args_of("git", "fetch"),
+            vec![vec!["fetch", "--quiet", "upstream", "develop"]]
+        );
         assert!(r.args_of("git", "log")[0].contains(&"upstream/develop..refs/heads/x".to_string()));
-        assert!(r.joined("gh").iter().any(|c| c.starts_with("pr create") && c.ends_with("--draft")));
+        assert!(r
+            .joined("gh")
+            .iter()
+            .any(|c| c.starts_with("pr create") && c.ends_with("--draft")));
         assert!(r.args_of("gh", "stack").is_empty());
     }
 
@@ -273,8 +350,14 @@ mod tests {
                 (A.into(), format!("feat: a\n\nChange-Id: {ID_A}\n")),
                 (B.into(), format!("feat: b renamed\n\nChange-Id: {ID_B}\n")),
             ],
-            remote_refs: vec![(BRANCH_A.into(), A.into()), (BRANCH_B.into(), "0".repeat(40))],
-            prs: vec![pr(10, BRANCH_A, "main", "feat: a"), pr(11, BRANCH_B, BRANCH_A, "feat: b")],
+            remote_refs: vec![
+                (BRANCH_A.into(), A.into()),
+                (BRANCH_B.into(), "0".repeat(40)),
+            ],
+            prs: vec![
+                pr(10, BRANCH_A, "main", "feat: a"),
+                pr(11, BRANCH_B, BRANCH_A, "feat: b"),
+            ],
             ..Default::default()
         });
         let rec = Recorder::default();
@@ -282,8 +365,13 @@ mod tests {
         assert_eq!(
             r.args_of("git", "push"),
             vec![vec![
-                "push".to_string(), "--quiet".into(), "--atomic".into(),
-                format!("--force-with-lease=refs/heads/{BRANCH_B}:{}", "0".repeat(40)),
+                "push".to_string(),
+                "--quiet".into(),
+                "--atomic".into(),
+                format!(
+                    "--force-with-lease=refs/heads/{BRANCH_B}:{}",
+                    "0".repeat(40)
+                ),
                 "origin".into(),
                 format!("{B}:refs/heads/{BRANCH_B}"),
             ]]
@@ -292,7 +380,9 @@ mod tests {
         let edits: Vec<&String> = gh.iter().filter(|c| c.starts_with("pr edit")).collect();
         assert_eq!(edits.len(), 1);
         assert_eq!(edits[0], "pr edit 11 --title feat: b renamed");
-        assert!(r.joined("gh").contains(&"stack link --base main 10 11".to_string()));
+        assert!(r
+            .joined("gh")
+            .contains(&"stack link --base main 10 11".to_string()));
     }
 
     #[test]
@@ -300,20 +390,38 @@ mod tests {
         let r = runner(State {
             commits: vec![
                 (A.into(), format!("feat: a\n\nChange-Id: {ID_A}\n")),
-                (B.into(), format!("feat: b (amended)\n\nChange-Id: {ID_B}\n")),
+                (
+                    B.into(),
+                    format!("feat: b (amended)\n\nChange-Id: {ID_B}\n"),
+                ),
             ],
             remote_refs: vec![(BRANCH_A.into(), A.into())],
-            prs: vec![pr(1, BRANCH_A, "main", "feat: a"), pr(2, "prrit/octocat/deadbeef", BRANCH_A, "feat: b")],
+            prs: vec![
+                pr(1, BRANCH_A, "main", "feat: a"),
+                pr(2, "prrit/octocat/deadbeef", BRANCH_A, "feat: b"),
+            ],
             stacks: vec![Stack {
                 number: 3,
                 open: true,
-                pull_requests: vec![StackPr { number: 1, state: "open".into() }, StackPr { number: 2, state: "open".into() }],
+                pull_requests: vec![
+                    StackPr {
+                        number: 1,
+                        state: "open".into(),
+                    },
+                    StackPr {
+                        number: 2,
+                        state: "open".into(),
+                    },
+                ],
             }],
         });
         let rec = Recorder::default();
         upload(&context(&r, &rec), &opts("origin", "main", false, "HEAD")).unwrap();
         let gh = r.joined("gh");
-        let unstack = gh.iter().position(|c| c == "api --method POST repos/{owner}/{repo}/stacks/3/unstack").unwrap();
+        let unstack = gh
+            .iter()
+            .position(|c| c == "api --method POST repos/{owner}/{repo}/stacks/3/unstack")
+            .unwrap();
         let link = gh.iter().position(|c| c.starts_with("stack link")).unwrap();
         assert!(link > unstack);
         assert!(!gh.iter().any(|c| c.starts_with("pr close")));
@@ -331,12 +439,20 @@ mod tests {
             prs: vec![pr(1, BRANCH_A, "main", "feat: a")],
             ..Default::default()
         })
-        .fail_when(move |cmd, args| cmd == "git" && args[0] == "cat-file" && args[2].starts_with(&gs));
+        .fail_when(move |cmd, args| {
+            cmd == "git" && args[0] == "cat-file" && args[2].starts_with(&gs)
+        });
         let rec = Recorder::default();
         upload(&context(&r, &rec), &opts("origin", "main", false, "HEAD")).unwrap();
         let err = rec.err_text();
-        assert!(err.contains(&format!("{BRANCH_A} (was fffffff) changed on GitHub")), "{err}");
-        assert!(err.contains(&format!("git reset --hard origin/{BRANCH_A}")), "{err}");
+        assert!(
+            err.contains(&format!("{BRANCH_A} (was fffffff) changed on GitHub")),
+            "{err}"
+        );
+        assert!(
+            err.contains(&format!("git reset --hard origin/{BRANCH_A}")),
+            "{err}"
+        );
         assert_eq!(r.args_of("git", "push").len(), 1);
     }
 

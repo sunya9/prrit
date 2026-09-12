@@ -15,8 +15,18 @@ pub const TEST_ENV: &[(&str, &str)] = &[
 ];
 
 pub fn sh(cwd: &Path, args: &[&str]) -> String {
-    let out = Command::new("git").args(args).current_dir(cwd).envs(TEST_ENV.iter().copied()).output().unwrap();
-    assert!(out.status.success(), "git {:?} failed: {}", args, String::from_utf8_lossy(&out.stderr));
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .envs(TEST_ENV.iter().copied())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "git {:?} failed: {}",
+        args,
+        String::from_utf8_lossy(&out.stderr)
+    );
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
@@ -31,8 +41,26 @@ impl TempRepo {
         let root = fresh_dir();
         let remote = root.join("remote.git");
         let work = root.join("work");
-        sh(&root, &["init", "-q", "--bare", "-b", "main", remote.to_str().unwrap()]);
-        sh(&root, &["clone", "-q", remote.to_str().unwrap(), work.to_str().unwrap()]);
+        sh(
+            &root,
+            &[
+                "init",
+                "-q",
+                "--bare",
+                "-b",
+                "main",
+                remote.to_str().unwrap(),
+            ],
+        );
+        sh(
+            &root,
+            &[
+                "clone",
+                "-q",
+                remote.to_str().unwrap(),
+                work.to_str().unwrap(),
+            ],
+        );
         sh(&work, &["checkout", "-q", "-b", "main"]);
         std::fs::write(work.join("base.txt"), "base\n").unwrap();
         sh(&work, &["add", "base.txt"]);
@@ -59,7 +87,10 @@ impl Drop for TempRepo {
 }
 
 fn fresh_dir() -> PathBuf {
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     let dir = std::env::temp_dir().join(format!("prrit-test-{}-{nanos}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     dir

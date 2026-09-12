@@ -60,7 +60,10 @@ pub struct StdIo {
 
 impl Default for StdIo {
     fn default() -> Self {
-        StdIo { stdin: std::io::stdin().lock(), stdout: std::io::stdout() }
+        StdIo {
+            stdin: std::io::stdin().lock(),
+            stdout: std::io::stdout(),
+        }
     }
 }
 
@@ -105,7 +108,10 @@ mod tests {
     }
 
     fn session(lines: &[&str], push: impl FnMut(&str, &str) -> Result<()>) -> String {
-        let mut io = Fake { input: lines.iter().map(|s| s.to_string()).collect(), out: String::new() };
+        let mut io = Fake {
+            input: lines.iter().map(|s| s.to_string()).collect(),
+            out: String::new(),
+        };
         serve(&mut io, push);
         io.out
     }
@@ -124,7 +130,11 @@ mod tests {
     fn dispatches_each_push_and_acks() {
         let mut seen = Vec::new();
         let out = session(
-            &["push refs/heads/feature:refs/for/main", "push +refs/heads/x:refs/for/dev%wip", ""],
+            &[
+                "push refs/heads/feature:refs/for/main",
+                "push +refs/heads/x:refs/for/dev%wip",
+                "",
+            ],
             |src, dst| {
                 seen.push((src.to_string(), dst.to_string()));
                 Ok(())
@@ -133,7 +143,10 @@ mod tests {
         assert_eq!(
             seen,
             vec![
-                ("refs/heads/feature".to_string(), "refs/for/main".to_string()),
+                (
+                    "refs/heads/feature".to_string(),
+                    "refs/for/main".to_string()
+                ),
                 ("refs/heads/x".to_string(), "refs/for/dev%wip".to_string()),
             ]
         );

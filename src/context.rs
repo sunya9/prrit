@@ -37,7 +37,11 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     pub fn new(runner: &'a dyn Runner, cwd: &Path, sink: &'a dyn Sink) -> Self {
-        Context { git: Git::new(runner, cwd), gh: Gh::new(runner, cwd), sink }
+        Context {
+            git: Git::new(runner, cwd),
+            gh: Gh::new(runner, cwd),
+            sink,
+        }
     }
 
     pub fn out(&self, line: impl AsRef<str>) {
@@ -57,7 +61,9 @@ pub fn resolve_login(ctx: &Context<'_>) -> Result<String> {
     }
     let login = ctx.gh.login()?;
     if login.is_empty() {
-        return Err(Error::msg("could not determine GitHub login (is gh authenticated?)"));
+        return Err(Error::msg(
+            "could not determine GitHub login (is gh authenticated?)",
+        ));
     }
     ctx.git.set_config(LOGIN_KEY, &login)?;
     Ok(login)

@@ -24,7 +24,10 @@ fn install_hook(ctx: &Context<'_>) -> Result<bool> {
     let hooks_dir = ctx.git.hooks_dir()?;
     let hook_path = hooks_dir.join("commit-msg");
     if hook_path.exists() && !std::fs::read_to_string(&hook_path)?.contains(HOOK_MARKER) {
-        ctx.err(format!("{} already exists and was not written by prrit; merge it by hand.", hook_path.display()));
+        ctx.err(format!(
+            "{} already exists and was not written by prrit; merge it by hand.",
+            hook_path.display()
+        ));
         return Ok(false);
     }
     std::fs::create_dir_all(&hooks_dir)?;
@@ -34,7 +37,10 @@ fn install_hook(ctx: &Context<'_>) -> Result<bool> {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&hook_path, std::fs::Permissions::from_mode(0o755))?;
     }
-    ctx.out(format!("Installed commit-msg hook at {}", hook_path.display()));
+    ctx.out(format!(
+        "Installed commit-msg hook at {}",
+        hook_path.display()
+    ));
     Ok(true)
 }
 
@@ -42,7 +48,9 @@ fn configure_review_remote(ctx: &Context<'_>, opts: &InitOptions<'_>) -> Result<
     let name = opts.review_remote;
     let url = format!("prrit::{}", opts.remote);
     if name == opts.remote {
-        ctx.err(format!("the review remote cannot be \"{name}\" itself; pick another name with --review-remote"));
+        ctx.err(format!(
+            "the review remote cannot be \"{name}\" itself; pick another name with --review-remote"
+        ));
         return Ok(false);
     }
     match ctx.git.remote_url(name) {
@@ -60,10 +68,16 @@ fn configure_review_remote(ctx: &Context<'_>, opts: &InitOptions<'_>) -> Result<
     }
 
     let base = resolve_base(ctx, opts.remote, opts.base)?;
-    ctx.git.set_config(&format!("remote.{name}.push"), &format!("HEAD:refs/for/{base}"))?;
+    ctx.git.set_config(
+        &format!("remote.{name}.push"),
+        &format!("HEAD:refs/for/{base}"),
+    )?;
     if opts.push_default {
         ctx.git.set_config("remote.pushDefault", name)?;
-        ctx.out(format!("Configured \"git push\" to upload HEAD to refs/for/{base} via {}", opts.remote));
+        ctx.out(format!(
+            "Configured \"git push\" to upload HEAD to refs/for/{base} via {}",
+            opts.remote
+        ));
     } else {
         ctx.out(format!(
             "Upload with \"git push {name}\" (HEAD -> refs/for/{base} via {}); pass --push-default to make a bare \"git push\" do it",
@@ -74,7 +88,8 @@ fn configure_review_remote(ctx: &Context<'_>, opts: &InitOptions<'_>) -> Result<
 }
 
 fn helper_on_path(dirs: &[PathBuf]) -> bool {
-    dirs.iter().any(|d| !d.as_os_str().is_empty() && d.join(HELPER_BINARY).exists())
+    dirs.iter()
+        .any(|d| !d.as_os_str().is_empty() && d.join(HELPER_BINARY).exists())
 }
 
 pub fn init(ctx: &Context<'_>, opts: &InitOptions<'_>) -> Result<bool> {
@@ -83,14 +98,20 @@ pub fn init(ctx: &Context<'_>, opts: &InitOptions<'_>) -> Result<bool> {
 
     let path_dirs = match &opts.path_dirs {
         Some(dirs) => dirs.clone(),
-        None => std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default(),
+        None => std::env::var_os("PATH")
+            .map(|p| std::env::split_paths(&p).collect())
+            .unwrap_or_default(),
     };
     if !helper_on_path(&path_dirs) {
-        ctx.err(format!("{HELPER_BINARY} is not on PATH; put it next to prrit so git can find it."));
+        ctx.err(format!(
+            "{HELPER_BINARY} is not on PATH; put it next to prrit so git can find it."
+        ));
         ok = false;
     }
     if !ctx.gh.has_stack_extension() {
-        ctx.err("gh-stack extension not found; install it with: gh extension install github/gh-stack");
+        ctx.err(
+            "gh-stack extension not found; install it with: gh extension install github/gh-stack",
+        );
         ok = false;
     }
     Ok(ok)
@@ -113,7 +134,12 @@ mod tests {
     }
 
     impl Runner for GhStub {
-        fn run(&self, cmd: &str, args: &[&str], opts: &RunOptions<'_>) -> crate::error::Result<String> {
+        fn run(
+            &self,
+            cmd: &str,
+            args: &[&str],
+            opts: &RunOptions<'_>,
+        ) -> crate::error::Result<String> {
             if cmd == "gh" && args.first() == Some(&"extension") {
                 return Ok(self.extensions.clone());
             }
@@ -128,15 +154,28 @@ mod tests {
 
     fn fixture() -> Fixture {
         let repo = TempRepo::bare_work();
-        sh(&repo.work, &["remote", "add", "origin", "https://example.invalid/o/r.git"]);
+        sh(
+            &repo.work,
+            &["remote", "add", "origin", "https://example.invalid/o/r.git"],
+        );
         let helper_dir = repo.root.join("bin");
         std::fs::create_dir_all(&helper_dir).unwrap();
         std::fs::write(helper_dir.join(HELPER_BINARY), "").unwrap();
         Fixture { repo, helper_dir }
     }
 
-    fn run_init(f: &Fixture, extensions: &str, rec: &Recorder, tweak: impl FnOnce(&mut InitOptions<'_>)) -> bool {
-        let runner = GhStub { extensions: extensions.into(), real: ExecRunner { inherit_target: InheritTarget::Stdout } };
+    fn run_init(
+        f: &Fixture,
+        extensions: &str,
+        rec: &Recorder,
+        tweak: impl FnOnce(&mut InitOptions<'_>),
+    ) -> bool {
+        let runner = GhStub {
+            extensions: extensions.into(),
+            real: ExecRunner {
+                inherit_target: InheritTarget::Stdout,
+            },
+        };
         let ctx = Context::new(&runner, &f.repo.work, rec);
         let mut opts = InitOptions {
             remote: "origin",
@@ -188,9 +227,16 @@ mod tests {
             .env("GIT_EDITOR", &editor)
             .output()
             .unwrap();
-        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
         let message = sh(&f.repo.work, &["log", "-1", "--format=%B"]);
-        assert!(message.starts_with("feat: edited\n\nChange-Id: I"), "{message}");
+        assert!(
+            message.starts_with("feat: edited\n\nChange-Id: I"),
+            "{message}"
+        );
         assert_eq!(message.lines().count(), 3);
     }
 
@@ -213,7 +259,10 @@ mod tests {
         let hook = f.repo.work.join(".git/hooks/commit-msg");
         std::fs::write(&hook, "#!/bin/sh\nexit 0\n").unwrap();
         assert!(!run_init(&f, STACK_INSTALLED, &rec, |_| {}));
-        assert_eq!(std::fs::read_to_string(&hook).unwrap(), "#!/bin/sh\nexit 0\n");
+        assert_eq!(
+            std::fs::read_to_string(&hook).unwrap(),
+            "#!/bin/sh\nexit 0\n"
+        );
         assert!(rec.err_text().contains("not written by prrit"));
     }
 
@@ -222,8 +271,14 @@ mod tests {
         let f = fixture();
         let rec = Recorder::default();
         assert!(run_init(&f, STACK_INSTALLED, &rec, |_| {}));
-        assert_eq!(sh(&f.repo.work, &["remote", "get-url", "review"]), "prrit::origin");
-        assert_eq!(sh(&f.repo.work, &["config", "remote.review.push"]), "HEAD:refs/for/main");
+        assert_eq!(
+            sh(&f.repo.work, &["remote", "get-url", "review"]),
+            "prrit::origin"
+        );
+        assert_eq!(
+            sh(&f.repo.work, &["config", "remote.review.push"]),
+            "HEAD:refs/for/main"
+        );
         assert!(std::process::Command::new("git")
             .args(["config", "remote.pushDefault"])
             .current_dir(&f.repo.work)
@@ -241,9 +296,18 @@ mod tests {
             o.review_remote = "gerrit";
             o.push_default = true;
         }));
-        assert_eq!(sh(&f.repo.work, &["remote", "get-url", "gerrit"]), "prrit::origin");
-        assert_eq!(sh(&f.repo.work, &["config", "remote.gerrit.push"]), "HEAD:refs/for/main");
-        assert_eq!(sh(&f.repo.work, &["config", "remote.pushDefault"]), "gerrit");
+        assert_eq!(
+            sh(&f.repo.work, &["remote", "get-url", "gerrit"]),
+            "prrit::origin"
+        );
+        assert_eq!(
+            sh(&f.repo.work, &["config", "remote.gerrit.push"]),
+            "HEAD:refs/for/main"
+        );
+        assert_eq!(
+            sh(&f.repo.work, &["config", "remote.pushDefault"]),
+            "gerrit"
+        );
     }
 
     #[test]
@@ -253,19 +317,33 @@ mod tests {
         assert!(!run_init(&f, STACK_INSTALLED, &rec, |o| o.review_remote = "origin"));
         assert!(rec.err_text().contains("--review-remote"));
 
-        sh(&f.repo.work, &["remote", "add", "review", "https://example.invalid/other.git"]);
+        sh(
+            &f.repo.work,
+            &[
+                "remote",
+                "add",
+                "review",
+                "https://example.invalid/other.git",
+            ],
+        );
         assert!(!run_init(&f, STACK_INSTALLED, &rec, |_| {}));
-        assert_eq!(sh(&f.repo.work, &["remote", "get-url", "review"]), "https://example.invalid/other.git");
+        assert_eq!(
+            sh(&f.repo.work, &["remote", "get-url", "review"]),
+            "https://example.invalid/other.git"
+        );
     }
 
     #[test]
     fn reports_missing_helper_and_extension() {
         let f = fixture();
         let rec = Recorder::default();
-        assert!(!run_init(&f, STACK_INSTALLED, &rec, |o| o.path_dirs = Some(vec![f.repo.root.join("nowhere")])));
+        assert!(!run_init(&f, STACK_INSTALLED, &rec, |o| o.path_dirs =
+            Some(vec![f.repo.root.join("nowhere")])));
         assert!(rec.err_text().contains("git-remote-prrit is not on PATH"));
         let rec = Recorder::default();
         assert!(!run_init(&f, "", &rec, |_| {}));
-        assert!(rec.err_text().contains("gh extension install github/gh-stack"));
+        assert!(rec
+            .err_text()
+            .contains("gh extension install github/gh-stack"));
     }
 }
