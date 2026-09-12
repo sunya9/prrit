@@ -1,0 +1,65 @@
+name: Release-plz
+
+# On every push to main, release-plz keeps a "release PR" up to date
+# (version bump + CHANGELOG from conventional commits). Merging that PR
+# creates the git tag and GitHub release, and this same run then builds and
+# uploads the binaries (a release created with GITHUB_TOKEN cannot trigger a
+# separate workflow, so the build is chained here).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  pull-requests: write
+  contents: write
+
+concurrency:
+  group: release-plz-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release-plz release
+    runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tag: ${{ steps.release.outputs.releases_created == 'true' && fromJson(steps.release.outputs.releases)[0].tag || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz release
+        id: release
+        uses: release-plz/action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-pr:
+    name: release-plz release-pr
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz release-pr
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          # A PAT (RELEASE_PLZ_TOKEN) lets CI run on the release PR; the
+          # default token creates the PR but cannot trigger workflows on it.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+
+  binaries:
+    name: build + publish binaries
+    needs: release
+    if: needs.release.outputs.releases_created == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit

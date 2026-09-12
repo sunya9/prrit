@@ -3,10 +3,22 @@
 Gerrit-style stacked pull requests for GitHub: one commit, one PR, uploaded with `git push review`.
 prrit manages branches, pushes, and PRs itself, and delegates only the stacking on GitHub to `gh stack link`.
 
+## Install
+
+Every channel installs both `prrit` and `git-remote-prrit` (the name git looks for).
+
+```sh
+brew install sunya9/tap/prrit                                                      # Homebrew (macOS / Linux)
+curl -fsSL https://github.com/sunya9/prrit/releases/latest/download/install.sh | sh  # ~/.local/bin
+cargo binstall prrit --git https://github.com/sunya9/prrit                           # prebuilt via cargo-binstall
+cargo install --git https://github.com/sunya9/prrit                                  # build from source
+```
+
+Prebuilt binaries cover macOS (arm64, x86_64) and Linux (x86_64, aarch64, static musl).
+
 ## Requirements
 
 - `git`, `gh` (logged in), and `gh extension install github/gh-stack`
-- `prrit` and `git-remote-prrit` on your PATH; `cargo install --path .` installs both
 
 ## Usage
 
@@ -73,6 +85,13 @@ cargo install --path .     # puts both binaries in ~/.cargo/bin
 ```
 
 Runtime dependencies are `serde` and `serde_json` only; everything else is std plus the `git` and `gh` executables.
+
+### Releasing
+
+Commits follow Conventional Commits. On every push to `main`, [release-plz](https://release-plz.dev) keeps a release PR open with the version bump and CHANGELOG; merging it tags `vX.Y.Z`, creates the GitHub release, and the same workflow builds the binaries, uploads archives plus `SHA256SUMS` and `install.sh`, and pushes the formula to the Homebrew tap. Repository settings involved:
+
+- secret `RELEASE_PLZ_TOKEN` (optional PAT): lets CI run on the release PR
+- variable `HOMEBREW_TAP_REPO` (e.g. `sunya9/homebrew-tap`) and secret `HOMEBREW_TAP_TOKEN` (PAT with contents write on that repo): enable the tap update; without them that job is skipped
 
 ## Limitations
 

@@ -1,0 +1,8 @@
+[workspace]
+# Distributed as binaries from GitHub Releases, not on crates.io.
+publish = false
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+dependencies_update = false
+pr_labels = ["release"]

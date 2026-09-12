@@ -1,0 +1,148 @@
+name: Release binaries
+
+# Builds prrit + git-remote-prrit for each target, attaches the archives and
+# checksums to the GitHub release for `tag`, then updates the Homebrew tap.
+# Called from release-plz.yml; also runnable by hand for an existing tag.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag (v1.2.3)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (v1.2.3)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install musl toolchain
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package
+        id: package
+        run: |
+          set -euo pipefail
+          archive="prrit-${{ matrix.target }}.tar.gz"
+          staging="$(mktemp -d)/prrit-${{ matrix.target }}"
+          mkdir -p "$staging"
+          cp "target/${{ matrix.target }}/release/prrit" "target/${{ matrix.target }}/release/git-remote-prrit" README.md LICENSE "$staging/"
+          tar -C "$(dirname "$staging")" -czf "$archive" "$(basename "$staging")"
+          if command -v sha256sum >/dev/null; then sha256sum "$archive" > "$archive.sha256"; else shasum -a 256 "$archive" > "$archive.sha256"; fi
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.archive }}.sha256
+          if-no-files-found: error
+
+  publish:
+    name: attach to release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Combined checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          cat *.sha256 > SHA256SUMS
+          cp ../scripts/install.sh install.sh
+      - name: Upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ inputs.tag }}" dist/* --clobber
+
+  homebrew:
+    name: update Homebrew tap
+    needs: publish
+    runs-on: ubuntu-latest
+    # Needs a PAT with contents:write on the tap repository; skipped otherwise.
+    if: ${{ vars.HOMEBREW_TAP_REPO != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Render formula
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          sha() { cut -d' ' -f1 "dist/prrit-$1.tar.gz.sha256"; }
+          sed \
+            -e "s|@VERSION@|$version|g" \
+            -e "s|@REPO@|${GITHUB_REPOSITORY}|g" \
+            -e "s|@SHA_DARWIN_ARM64@|$(sha aarch64-apple-darwin)|g" \
+            -e "s|@SHA_DARWIN_X86_64@|$(sha x86_64-apple-darwin)|g" \
+            -e "s|@SHA_LINUX_ARM64@|$(sha aarch64-unknown-linux-musl)|g" \
+            -e "s|@SHA_LINUX_X86_64@|$(sha x86_64-unknown-linux-musl)|g" \
+            scripts/prrit.rb.tmpl > prrit.rb
+          cat prrit.rb
+        env:
+          TAG: ${{ inputs.tag }}
+      - name: Push formula to tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "HOMEBREW_TAP_TOKEN secret is not set; skipping tap update" >&2
+            exit 0
+          fi
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${TAP_REPO}.git" tap
+          mkdir -p tap/Formula
+          cp prrit.rb tap/Formula/prrit.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/prrit.rb
+          git commit -m "prrit ${TAG}" || { echo "formula unchanged"; exit 0; }
+          git push

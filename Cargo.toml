@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2021"
 description = "Gerrit-style one-commit-per-PR stacked PRs for GitHub, built on gh stack link"
 license = "MIT"
+repository = "https://github.com/sunya9/prrit"
+publish = false
+
+# cargo-binstall picks the archives the release workflow uploads.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
+bin-dir = "{ name }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
 
 # Binaries in src/bin: `prrit` and `git-remote-prrit` (the name git looks for) share the library.
 
