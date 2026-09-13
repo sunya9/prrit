@@ -49,7 +49,11 @@ jobs:
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
+      # Only the calling commit may touch the cache shared with main; a build of
+      # an arbitrary `ref` (release, workflow_dispatch) runs without it so it can
+      # neither read nor poison that cache (CodeQL actions/cache-poisoning).
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: inputs.ref == ''
         with:
           key: ${{ matrix.target }}
       - name: Install musl toolchain
