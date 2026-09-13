@@ -39,6 +39,7 @@ Then push like Gerrit:
 Options:
   --review-remote <name>   init only: name of the helper remote (default: review)
   --push-default           init only: also set remote.pushDefault so a bare \"git push\" uploads
+  -V, --version            Show the version
   -h, --help               Show this help
 ";
 
@@ -49,6 +50,7 @@ struct Cli {
     review_remote: String,
     push_default: bool,
     help: bool,
+    version: bool,
 }
 
 fn parse_cli(args: &[String]) -> Result<Cli, String> {
@@ -59,12 +61,14 @@ fn parse_cli(args: &[String]) -> Result<Cli, String> {
         review_remote: DEFAULT_REVIEW_REMOTE.into(),
         push_default: false,
         help: false,
+        version: false,
     };
     let mut positionals = Vec::new();
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "-h" | "--help" => cli.help = true,
+            "-V" | "--version" => cli.version = true,
             "--push-default" => cli.push_default = true,
             "--review-remote" => {
                 cli.review_remote = it.next().ok_or("--review-remote needs a value")?.clone();
@@ -94,6 +98,14 @@ fn run(args: &[String], ctx: &Context<'_>) -> i32 {
             return 1;
         }
     };
+    if cli.version {
+        ctx.out(format!("prrit {}", env!("CARGO_PKG_VERSION")));
+        return 0;
+    }
+    if cli.version {
+        ctx.out(format!("prrit {}", env!("CARGO_PKG_VERSION")));
+        return 0;
+    }
     let Some(command) = &cli.command else {
         ctx.out(USAGE);
         return if cli.help { 0 } else { 1 };
@@ -223,6 +235,13 @@ mod tests {
         assert_eq!(cli.remote, "origin");
         assert_eq!(cli.base, None);
         assert!(parse_cli(&strs(&["--bogus"])).is_err());
+    }
+
+    #[test]
+    fn version_flag() {
+        assert!(parse_cli(&strs(&["--version"])).unwrap().version);
+        assert!(parse_cli(&strs(&["-V"])).unwrap().version);
+        assert!(!parse_cli(&strs(&["status"])).unwrap().version);
     }
 
     #[test]

@@ -319,6 +319,15 @@ fn status_and_help_run_from_the_binary() {
     let out = sb.cmd("prrit", &["bogus"], &sb.work);
     assert_eq!(out.status.code(), Some(1));
 
+    for args in [&["--version"][..], &["-V"]] {
+        let out = sb.cmd("prrit", args, &sb.work);
+        assert!(out.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout).trim(),
+            format!("prrit {}", env!("CARGO_PKG_VERSION"))
+        );
+    }
+
     let out = sb.cmd("prrit", &["skill"], &sb.work);
     assert!(out.status.success());
     assert!(String::from_utf8_lossy(&out.stdout).starts_with("---\nname: prrit"));
