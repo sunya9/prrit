@@ -5,16 +5,34 @@ prrit manages branches, pushes, and PRs itself, and delegates only the stacking 
 
 ## Install
 
-Every channel installs both `prrit` and `git-remote-prrit` (the name git looks for).
+Pick one. Every method installs both `prrit` and `git-remote-prrit` (the name git looks for), and both must end up on your PATH.
+
+**Homebrew** (macOS / Linux)
 
 ```sh
-brew trust sunya9/tap && brew install sunya9/tap/prrit                             # Homebrew (macOS / Linux)
-curl -fsSL https://github.com/sunya9/prrit/releases/latest/download/install.sh | sh  # ~/.local/bin
-cargo binstall prrit                                                                 # prebuilt binaries via cargo-binstall
-cargo install prrit                                                                  # build from crates.io
+brew trust sunya9/tap
+brew install sunya9/tap/prrit
 ```
 
-Prebuilt binaries cover macOS (arm64, x86_64) and Linux (x86_64, aarch64, static musl).
+**Install script** (prebuilt binary into `~/.local/bin`)
+
+```sh
+curl -fsSL https://github.com/sunya9/prrit/releases/latest/download/install.sh | sh
+```
+
+**cargo-binstall** (prebuilt binary via cargo)
+
+```sh
+cargo binstall prrit
+```
+
+**cargo install** (build from source)
+
+```sh
+cargo install prrit
+```
+
+Prebuilt binaries cover macOS (arm64, x86_64) and Linux (x86_64, aarch64, static musl). Archives and checksums are on the [releases page](https://github.com/sunya9/prrit/releases).
 
 ## Requirements
 
