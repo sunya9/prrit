@@ -117,6 +117,8 @@ Commits follow Conventional Commits. On every push to `main`, [release-plz](http
 - secret `RELEASE_PLZ_TOKEN` (optional PAT): lets CI run on the release PR
 - variable `HOMEBREW_TAP_REPO` (e.g. `sunya9/homebrew-tap`) and secret `HOMEBREW_TAP_TOKEN` (PAT with contents write on that repo): enable the tap update; without them that job is skipped
 
+If a release run fails halfway, rerun its failed jobs (`gh run rerun <run-id> --failed`); the binaries are always built from the tagged commit the run belongs to.
+
 ## Limitations
 
 - Linear history only (merge commits are rejected)

@@ -1,17 +1,13 @@
 name: Release binaries
 
-# Builds the binaries (build.yml), attaches the archives and checksums to the
-# GitHub release for `tag`, then updates the Homebrew tap. Called from
-# release-plz.yml; also runnable by hand for an existing tag.
+# Builds the binaries (build.yml) from the calling commit, attaches the
+# archives and checksums to the GitHub release `tag` (which release-plz just
+# created for that same commit), then updates the Homebrew tap. Only called
+# from release-plz.yml; to redo a release, rerun that run's failed jobs
+# (`gh run rerun <run-id> --failed`).
 
 on:
   workflow_call:
-    inputs:
-      tag:
-        description: Release tag (v1.2.3)
-        required: true
-        type: string
-  workflow_dispatch:
     inputs:
       tag:
         description: Release tag (v1.2.3)
@@ -25,7 +21,6 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     with:
-      ref: ${{ inputs.tag }}
       retention-days: 7
 
   publish:
@@ -34,8 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.tag }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
@@ -59,8 +52,6 @@ jobs:
     if: ${{ vars.HOMEBREW_TAP_REPO != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.tag }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
