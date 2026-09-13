@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/sunya9/prrit/compare/v0.1.1...v0.1.2) - 2026-09-13
+
+### Added
+
+- add --version (-V)
+- ship an agent skill and print it with `prrit skill`
+
+### Other
+
+- build releases from the calling commit instead of an input ref
+- one code block per install method
+- trust the tap before brew install
+
 ## [0.1.1](https://github.com/sunya9/prrit/compare/v0.1.0...v0.1.1) - 2026-09-12
 
 ### Other
