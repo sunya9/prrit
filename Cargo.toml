@@ -1,6 +1,6 @@
 [package]
 name = "prrit"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "Gerrit-style one-commit-per-PR stacked PRs for GitHub, built on gh stack link"
 license = "MIT"
